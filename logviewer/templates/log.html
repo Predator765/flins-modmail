@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket Transcript — #{{ channel_name }}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-primary:    #1e1f22;
+    --bg-secondary:  #2b2d31;
+    --bg-tertiary:   #313338;
+    --bg-hover:      #35373c;
+    --accent:        #5865f2;
+    --accent-green:  #57f287;
+    --accent-red:    #ed4245;
+    --text-primary:  #dbdee1;
+    --text-muted:    #949ba4;
+    --text-link:     #00aafc;
+    --border:        #3f4147;
+    --staff-badge:   #5865f2;
+    --user-badge:    #3ba55c;
+    --radius:        8px;
+    --font: 'gg sans', 'Noto Sans', Whitney, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  }
+
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.375;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  a { color: var(--text-link); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Top header ─────────────────────────────────────────────────────── */
+  .top-bar {
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .top-bar .logo {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+  }
+  .top-bar .divider { color: var(--border); font-size: 20px; }
+  .top-bar .channel-name {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* ── Layout ──────────────────────────────────────────────────────────── */
+  .layout {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────────────────────── */
+  .sidebar {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--bg-secondary);
+    border-right: 1px solid var(--border);
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+  }
+
+  .sidebar-section { display: flex; flex-direction: column; gap: 8px; }
+  .sidebar-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--text-muted);
+    padding: 0 4px;
+  }
+
+  .info-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .user-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .user-row .avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    overflow: hidden;
+  }
+  .user-row .avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+  .user-row .user-info { overflow: hidden; }
+  .user-row .user-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .user-row .user-id {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: monospace;
+  }
+
+  .meta-row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 4px;
+  }
+  .meta-key {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+  }
+  .meta-value {
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .badge-closed { background: rgba(237,66,69,0.2); color: #ed4245; }
+
+  .stat-row {
+    display: flex;
+    gap: 8px;
+  }
+  .stat-box {
+    flex: 1;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .stat-box .stat-num {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .stat-box .stat-lbl {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ── Messages pane ───────────────────────────────────────────────────── */
+  .messages-pane {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    background: var(--bg-tertiary);
+  }
+
+  .messages-inner { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+
+  /* Day separator */
+  .day-separator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 28px 0 20px;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .day-separator::before,
+  .day-separator::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Message group */
+  .msg-group {
+    display: flex;
+    gap: 16px;
+    padding: 4px 0;
+    border-radius: 4px;
+    transition: background 0.05s;
+    margin-bottom: 16px;
+  }
+  .msg-group:hover { background: var(--bg-hover); }
+
+  .msg-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .msg-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+
+  .msg-body { flex: 1; min-width: 0; }
+
+  .msg-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+  .msg-author {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  .msg-author:hover { text-decoration: underline; }
+
+  .role-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 20px;
+    letter-spacing: 0.4px;
+    vertical-align: middle;
+  }
+  .role-staff { background: rgba(88,101,242,0.25); color: #7289da; }
+  .role-user  { background: rgba(59,165,92,0.25);  color: #57f287; }
+
+  .msg-ts {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .msg-line {
+    position: relative;
+    padding-left: 0;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  .msg-content {
+    color: var(--text-primary);
+    font-size: 15px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1.4;
+  }
+  .msg-content.empty { color: var(--text-muted); font-style: italic; font-size: 13px; }
+
+  .msg-inline-ts {
+    font-size: 10px;
+    color: transparent;
+    position: absolute;
+    left: -48px;
+    top: 3px;
+    width: 40px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.1s;
+    pointer-events: none;
+  }
+  .msg-group:hover .msg-inline-ts { color: var(--text-muted); }
+
+  /* Attachments */
+  .attachments { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .attachment-img {
+    max-width: 400px;
+    max-height: 300px;
+    border-radius: 6px;
+    cursor: zoom-in;
+    border: 1px solid var(--border);
+    display: block;
+  }
+  .attachment-file {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-primary);
+  }
+  .attachment-file .file-icon { font-size: 22px; }
+  .attachment-file a { color: var(--text-link); font-size: 13px; }
+
+  /* ── Lightbox ────────────────────────────────────────────────────────── */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+  .lightbox.open { display: flex; }
+  .lightbox img {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 8px;
+    box-shadow: 0 8px 48px rgba(0,0,0,0.6);
+  }
+  .lightbox-close {
+    position: absolute;
+    top: 20px;
+    right: 24px;
+    font-size: 28px;
+    color: #fff;
+    cursor: pointer;
+    line-height: 1;
+    opacity: 0.8;
+  }
+  .lightbox-close:hover { opacity: 1; }
+
+  /* ── Footer ─────────────────────────────────────────────────────────── */
+  .footer {
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    padding: 12px 24px;
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  /* ── Responsive ─────────────────────────────────────────────────────── */
+  @media (max-width: 720px) {
+    .sidebar { display: none; }
+    .layout { flex-direction: column; }
+    .messages-inner { padding: 0 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <span class="logo">Ticket Logs</span>
+  <span class="divider">/</span>
+  <span class="channel-name"># {{ channel_name }}</span>
+</div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Status</div>
+      <div style="padding: 0 4px;">
+        <span class="badge badge-closed">Closed</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Ticket</div>
+      <div class="info-card" style="gap:6px; padding: 10px 12px;">
+        <div class="meta-row">
+          <div class="meta-key">Channel</div>
+          <div class="meta-value"># {{ channel_name }}</div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-key">Opened</div>
+          <div class="meta-value">{{ created_at }}</div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-key">Closed</div>
+          <div class="meta-value">{{ closed_at }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Opened By</div>
+      <div class="info-card" style="padding: 10px 12px;">
+        <div class="user-row">
+          <div class="avatar" style="background: {{ recipient_color }};">
+            {% if recipient_avatar %}
+              <img src="{{ recipient_avatar }}" alt="{{ recipient_name }}" onerror="this.style.display='none';this.parentElement.textContent='{{ recipient_initials }}'">
+            {% else %}
+              {{ recipient_initials }}
+            {% endif %}
+          </div>
+          <div class="user-info">
+            <div class="user-name">{{ recipient_name }}</div>
+            <div class="user-id">{{ recipient_id }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Closed By</div>
+      <div class="info-card" style="padding: 10px 12px;">
+        <div class="user-row">
+          <div class="avatar" style="background: {{ closer_color }};">
+            {% if closer_avatar %}
+              <img src="{{ closer_avatar }}" alt="{{ closer_name }}" onerror="this.style.display='none';this.parentElement.textContent='{{ closer_initials }}'">
+            {% else %}
+              {{ closer_initials }}
+            {% endif %}
+          </div>
+          <div class="user-info">
+            <div class="user-name">{{ closer_name }}</div>
+            <div class="user-id">{{ closer_id }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Stats</div>
+      <div class="stat-row">
+        <div class="stat-box">
+          <div class="stat-num">{{ total_messages }}</div>
+          <div class="stat-lbl">Messages</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-num">{{ message_groups | selectattr('type', 'equalto', 'group') | selectattr('is_staff') | list | length }}</div>
+          <div class="stat-lbl">Staff</div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Messages -->
+  <main class="messages-pane">
+    <div class="messages-inner">
+
+      {% if not message_groups %}
+        <div style="text-align:center; margin-top:60px; color: var(--text-muted);">
+          <div style="font-size:40px; margin-bottom:12px;">📭</div>
+          <div style="font-size:16px; font-weight:600;">No messages in this transcript.</div>
+        </div>
+      {% endif %}
+
+      {% for item in message_groups %}
+        {% if item.type == 'separator' %}
+          <div class="day-separator">{{ item.date }}</div>
+
+        {% elif item.type == 'group' %}
+          <div class="msg-group">
+            <div class="msg-avatar" style="background: {{ item.color }};"
+                 title="{{ item.author_name }}">
+              {% if item.author_avatar %}
+                <img src="{{ item.author_avatar }}"
+                     alt="{{ item.author_name }}"
+                     onerror="this.style.display='none';this.parentElement.textContent='{{ item.initials }}'">
+              {% else %}
+                {{ item.initials }}
+              {% endif %}
+            </div>
+
+            <div class="msg-body">
+              <div class="msg-header">
+                <span class="msg-author">{{ item.author_name }}</span>
+                {% if item.is_staff %}
+                  <span class="role-badge role-staff">Staff</span>
+                {% else %}
+                  <span class="role-badge role-user">User</span>
+                {% endif %}
+                {% if item.messages %}
+                  <span class="msg-ts">{{ item.messages[0].full_timestamp }}</span>
+                {% endif %}
+              </div>
+
+              {% for m in item.messages %}
+                <div class="msg-line" style="position:relative; padding-left:0;">
+                  <span class="msg-inline-ts">{{ m.timestamp }}</span>
+                  <div>
+                    {% if m.content %}
+                      <div class="msg-content">{{ m.content }}</div>
+                    {% endif %}
+                    {% if m.attachments %}
+                      <div class="attachments">
+                        {% for att in m.attachments %}
+                          {% set fname = att.filename | lower %}
+                          {% if fname.endswith('.png') or fname.endswith('.jpg') or fname.endswith('.jpeg') or fname.endswith('.gif') or fname.endswith('.webp') %}
+                            <img class="attachment-img"
+                                 src="{{ att.url }}"
+                                 alt="{{ att.filename }}"
+                                 loading="lazy"
+                                 onclick="openLightbox('{{ att.url }}')">
+                          {% else %}
+                            <div class="attachment-file">
+                              <span class="file-icon">📎</span>
+                              <div>
+                                <div>{{ att.filename }}</div>
+                                <a href="{{ att.url }}" target="_blank" rel="noopener">Download</a>
+                              </div>
+                            </div>
+                          {% endif %}
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+
+    </div>
+  </main>
+
+</div>
+
+<div class="footer">
+  Ticket Logs &mdash; # {{ channel_name }} &mdash; {{ total_messages }} messages
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<script>
+  function openLightbox(url) {
+    document.getElementById('lightbox-img').src = url;
+    document.getElementById('lightbox').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeLightbox();
+  });
+</script>
+
+</body>
+</html>

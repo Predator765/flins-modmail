@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ticket Logs</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'gg sans', 'Noto Sans', Whitney, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: #1e1f22;
+    color: #dbdee1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 24px;
+  }
+  .icon { font-size: 56px; }
+  h1 { font-size: 28px; font-weight: 700; }
+  p { color: #949ba4; font-size: 15px; max-width: 420px; text-align: center; line-height: 1.5; }
+  .hint {
+    background: #2b2d31;
+    border: 1px solid #3f4147;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 13px;
+    color: #949ba4;
+    font-family: monospace;
+  }
+</style>
+</head>
+<body>
+  <div class="icon">🎫</div>
+  <h1>Ticket Logs</h1>
+  <p>Navigate to a specific transcript by appending the ticket key to the URL.</p>
+  <div class="hint">/ticket-&lt;channel-id&gt;</div>
+</body>
+</html>
