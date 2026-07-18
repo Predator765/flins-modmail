@@ -1016,7 +1016,7 @@ class Thread:
             thread_creation_response = self.bot.config["thread_creation_response"]
 
             embed = discord.Embed(
-                color=0xE58C88,
+                color=0x39438a,
                 description=thread_creation_response,
                 timestamp=channel.created_at,
             )
@@ -1139,7 +1139,7 @@ class Thread:
             f"> Display Name: {display_name}"
         )
 
-        embed = discord.Embed(color=0xE58C88, title="New Ticket", description=description, timestamp=time)
+        embed = discord.Embed(color=0x39438a, title="New Ticket", description=description, timestamp=time)
 
         if user.dm_channel:
             footer = f"User ID: {user.id} • DM ID: {user.dm_channel.id}"
@@ -1306,7 +1306,7 @@ class Thread:
 
         _div_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "divider.png")
 
-        transcript_embed = discord.Embed(title="Ticket Transcript", color=0xE58C88, description=transcript_desc)
+        transcript_embed = discord.Embed(title="Ticket Transcript", color=0x39438a, description=transcript_desc)
         transcript_embed.set_image(url="attachment://divider.png")
         transcript_embed.set_footer(text="Ticket transcript might take a minute to upload")
         transcript_embed.timestamp = discord.utils.utcnow()
