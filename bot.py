@@ -1,6 +1,5 @@
 __version__ = "4.2.1"
 
-
 import asyncio
 import copy
 import hashlib
@@ -71,15 +70,24 @@ if sys.platform == "win32":
 
 
 class ModmailBot(commands.Bot):
-    def __init__(self):
+    def __init__(self, *args, use_proxy: bool = False, **kwargs):
         self.config = ConfigManager(self)
         self.config.populate_cache()
+
+        # Proxy is only used when main() asks for it (after the direct IP got blocked by Discord).
+        proxy_url = os.getenv("PROXY_URL") or os.getenv("HTTP_PROXY") or os.getenv("HTTPS_PROXY")
+        self.has_proxy = bool(proxy_url)
+        if proxy_url and use_proxy:
+            kwargs['proxy'] = proxy_url
+            logger.info("Routing traffic through the proxy.")
+        else:
+            logger.info("Connecting directly (no proxy).")
 
         intents = discord.Intents.all()
         if not self.config["enable_presence_intent"]:
             intents.presences = False
 
-        super().__init__(command_prefix=None, intents=intents)  # implemented in `get_prefix`
+        super().__init__(command_prefix=None, intents=intents, *args, **kwargs)  # implemented in `get_prefix`
         self.session = None
         self._api = None
         self.formatter = SafeFormatter()
@@ -95,6 +103,7 @@ class ModmailBot(commands.Bot):
         self.start_time = discord.utils.utcnow()
         self._started = False
         self._fatal = False
+        self._ip_blocked = False
 
         self.threads = ThreadManager(self)
         self._message_queues = {}  # User ID -> asyncio.Queue for message ordering
@@ -246,6 +255,12 @@ class ModmailBot(commands.Bot):
                 except discord.LoginFailure:
                     logger.critical("Invalid token")
                     self._fatal = True
+                except discord.HTTPException as e:
+                    if e.status == 429:
+                        logger.critical("Discord is rate-limiting this IP (429).")
+                        self._ip_blocked = True
+                    else:
+                        logger.critical("Fatal exception", exc_info=True)
                 except Exception:
                     logger.critical("Fatal exception", exc_info=True)
                 finally:
@@ -2314,16 +2329,44 @@ def main():
     keep_alive()
 
     import time as _time
-    retry_delay = 5
-    while True:
-        bot = ModmailBot()
-        bot.run()
-        if getattr(bot, "_fatal", False):
-            logger.critical("Fatal error — not restarting.")
-            break
-        logger.warning("Bot stopped unexpectedly. Restarting in %ds...", retry_delay)
-        _time.sleep(retry_delay)
+
+    # State carried across full process restarts (os.execv keeps the environment).
+    use_proxy = os.environ.get("_USE_PROXY") == "1"
+    blocked_streak = int(os.environ.get("_BLOCK_STREAK", "0"))
+    retry_delay = int(os.environ.get("_RETRY_DELAY", "5"))
+
+    bot = ModmailBot(use_proxy=use_proxy)
+    started = _time.monotonic()
+    bot.run()
+
+    if getattr(bot, "_fatal", False):
+        logger.critical("Fatal error — not restarting.")
+        return
+
+    if _time.monotonic() - started > 300:
+        retry_delay, blocked_streak = 5, 0  # ran fine for a while, reset backoff
+
+    if getattr(bot, "_ip_blocked", False):
+        blocked_streak += 1
+        if bot.has_proxy:
+            use_proxy = not use_proxy
+            logger.warning("Switching to %s.", "proxy" if use_proxy else "direct connection")
+        # first block: try the other route quickly; if both keep failing, back off hard
+        delay = 10 if blocked_streak == 1 else min(60 * 2 ** (blocked_streak - 2), 900)
+    else:
+        delay = retry_delay
         retry_delay = min(retry_delay * 2, 60)
+
+    logger.warning("Bot stopped. Fully restarting in %ds...", delay)
+    _time.sleep(delay)
+
+    os.environ["_USE_PROXY"] = "1" if use_proxy else "0"
+    os.environ["_BLOCK_STREAK"] = str(blocked_streak)
+    os.environ["_RETRY_DELAY"] = str(retry_delay)
+
+    import logging
+    logging.shutdown()
+    os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
 if __name__ == "__main__":
